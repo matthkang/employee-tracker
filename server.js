@@ -32,7 +32,7 @@ const questions = [
     {
         message: 'What would you like to do?',
         type: 'list',
-        choices: ['View All Employees', 'Add Employee', 'Update Employee Role', 'View All Roles', 'Add Role', 'View All Departments', 'Add Department', 'Quit'],
+        choices: ['View All Employees', 'Add Employee', 'Update Employee Role', new inquirer.Separator(), 'View All Roles', 'Add Role', new inquirer.Separator(), 'View All Departments', 'Add Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
         name: 'choice'
     }
 ];
@@ -58,7 +58,7 @@ const role_questions = [
     }
 ];
 
-function init() {
+function ask() {
     inquirer.prompt(questions)
         .then((answers) => {
             if (answers.choice === 'View All Employees') {
@@ -89,19 +89,39 @@ function init() {
                         if (err) {
                             console.log(err);
                         }
-                        console.log(result);
                     });
                 })
-                
             }
             else if (answers.choice === 'View All Departments') {
+                const sql = `SELECT * FROM department`;
+                db.promise().query(sql)
+                .then(([rows,fields]) => {
+                    console.log();
+                    console.table(rows);
+                })
+                .catch(console.log)
+                .then(() => db.end());
             }
             else if (answers.choice === 'Add Department') {
-
+                
             }
             else if (answers.choice === 'Quit') {
             }
+            ask();
         })
+}
+
+function init() {
+    let welcome_message = ` 
+    _____                 _                         __  __                                   
+   | ____|_ __ ___  _ __ | | ___  _   _  ___  ___  |  \\/  | __ _ _ __   __ _  __ _  ___ _ __ 
+   |  _| | '_ \` _ \\| '_ \\| |/ _ \\| | | |/ _ \\/ _ \\ | |\\/| |/ _\` | '_ \\ / _\` |/ _\` |/ _ \\ '__|
+   | |___| | | | | | |_) | | (_) | |_| |  __/  __/ | |  | | (_| | | | | (_| | (_| |  __/ |   
+   |_____|_| |_| |_| .__/|_|\\___/ \\__, |\\___|\\___| |_|  |_|\\__,_|_| |_|\\__,_|\\__, |\\___|_|   
+                   |_|            |___/                                      |___/           
+   `;
+   console.log(welcome_message);
+   ask();
 }
 
 init();
