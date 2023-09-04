@@ -23,9 +23,8 @@ const db = mysql.createConnection(
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
         database: process.env.DB_NAME
-    },
-    console.log(`Connected to the books_db database.`)
-);
+    }
+).promise();
 
 // create an array of questions for initial user prompts
 const questions = [
@@ -58,38 +57,9 @@ const role_questions = [
     }
 ];
 
-function addRole() {
-    inquirer.prompt(role_questions).then((answers) => {
-        const sql = `INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`;
-        const departmentId = {
-            Engineering: '1',
-            Finance: '2',
-            Legal: '3',
-            Sales: '4',
-            Service: '5'
-        }
-        const roleName = answers.role_name;
-        const salary = answers.salary;
-        const department = answers.department;
-
-        const params = [roleName, salary, departmentId[department]];
-
-        db.promise().query(sql, params, (err, result) => {
-            if (err) {
-                console.log(err);
-            }
-        })
-        .catch(console.log)
-        .then(() => {
-            db.end();
-            ask();
-        })
-    })
-}
-
-function viewDepartments() {
-    const sql = `SELECT * FROM department`;
-    db.promise().query(sql)
+function viewRoles() {
+    const sql = `SELECT * FROM role`;
+    db.query(sql)
         .then(([rows, fields]) => {
             console.log();
             console.table(rows);
@@ -99,6 +69,68 @@ function viewDepartments() {
             db.end();
             ask();
         });
+}
+
+async function getDepartmentId(department) {
+    const result = await db.query(`SELECT id FROM department WHERE name = ?`, department);
+    return result[0][0].id;
+}
+
+function addRole() {
+    inquirer.prompt(role_questions).then(async (answers) => {
+        const roleName = answers.role_name;
+        const salary = answers.salary;
+        const department = answers.department;
+
+        const departmentId = await getDepartmentId(department);
+
+        const sql = `INSERT INTO role (title, salary, department_id) VALUES (?, ?, ?)`;
+
+        const params = [roleName, salary, departmentId];
+        // insert statement to add new role
+        db.query(sql, params, (err, result) => {
+            if (err) {
+                console.log(err);
+            }
+        })
+            .catch(console.log)
+            .then(() => {
+                db.end();
+                ask();
+            })
+    })
+}
+
+function viewDepartments() {
+    const sql = `SELECT * FROM department`;
+    db.query(sql)
+        .then(([rows, fields]) => {
+            console.log();
+            console.table(rows);
+        })
+        .catch(console.log)
+        .then(() => {
+            db.end();
+            ask();
+        });
+}
+
+function addDepartment() {
+    inquirer.prompt(department_questions).then((answers) => {
+        const sql = `INSERT INTO department (name) VALUES (?)`;
+        const departmentName = answers.department;
+
+        db.query(sql, departmentName, (err, result) => {
+            if (err) {
+                console.log(err);
+            }
+        })
+            .catch(console.log)
+            .then(() => {
+                db.end();
+                ask();
+            })
+    })
 }
 
 function ask() {
@@ -111,7 +143,7 @@ function ask() {
             else if (answers.choice === 'Update Employee Role') {
             }
             else if (answers.choice === 'View All Roles') {
-                
+                viewRoles();
             }
             else if (answers.choice === 'Add Role') {
                 addRole();
@@ -120,7 +152,7 @@ function ask() {
                 viewDepartments();
             }
             else if (answers.choice === 'Add Department') {
-
+                addDepartment();
             }
             else if (answers.choice === 'Quit') {
             }
