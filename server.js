@@ -3,6 +3,8 @@ const inquirer = require('inquirer')
 // Import and require mysql2
 const mysql = require('mysql2');
 
+var figlet = require('figlet');
+
 const express = require('express');
 
 // import and configure dotenv
@@ -57,6 +59,20 @@ const role_questions = [
     }
 ];
 
+function viewEmployees() {
+    // manager id should return the first and last name of the manager
+    const sql = `SELECT employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name, ' ', manager.last_name) AS manager FROM employee JOIN role ON employee.role_id = role.id JOIN department ON role.department_id = department.id LEFT JOIN employee AS manager ON employee.manager_id = manager.id`;
+    db.query(sql)
+        .then(([rows, fields]) => {
+            console.log();
+            console.table(rows);
+        })
+        .catch(console.log)
+        .then(() => {
+            ask();
+        });
+}
+
 function viewRoles() {
     const sql = `SELECT * FROM role`;
     db.query(sql)
@@ -66,13 +82,13 @@ function viewRoles() {
         })
         .catch(console.log)
         .then(() => {
-            db.end();
             ask();
         });
 }
 
 async function getDepartmentId(department) {
-    const result = await db.query(`SELECT id FROM department WHERE name = ?`, department);
+    const sql = `SELECT id FROM department WHERE name = ?`;
+    const result = await db.query(sql, department);
     return result[0][0].id;
 }
 
@@ -95,7 +111,6 @@ function addRole() {
         })
             .catch(console.log)
             .then(() => {
-                db.end();
                 ask();
             })
     })
@@ -110,7 +125,6 @@ function viewDepartments() {
         })
         .catch(console.log)
         .then(() => {
-            db.end();
             ask();
         });
 }
@@ -127,7 +141,6 @@ function addDepartment() {
         })
             .catch(console.log)
             .then(() => {
-                db.end();
                 ask();
             })
     })
@@ -137,6 +150,7 @@ function ask() {
     inquirer.prompt(questions)
         .then((answers) => {
             if (answers.choice === 'View All Employees') {
+                viewEmployees();
             }
             else if (answers.choice === 'Add Employee') {
             }
@@ -155,20 +169,15 @@ function ask() {
                 addDepartment();
             }
             else if (answers.choice === 'Quit') {
+                db.end();
             }
 
         })
 }
 
 function init() {
-    let welcome_message = ` 
-    _____                 _                         __  __                                   
-   | ____|_ __ ___  _ __ | | ___  _   _  ___  ___  |  \\/  | __ _ _ __   __ _  __ _  ___ _ __ 
-   |  _| | '_ \` _ \\| '_ \\| |/ _ \\| | | |/ _ \\/ _ \\ | |\\/| |/ _\` | '_ \\ / _\` |/ _\` |/ _ \\ '__|
-   | |___| | | | | | |_) | | (_) | |_| |  __/  __/ | |  | | (_| | | | | (_| | (_| |  __/ |   
-   |_____|_| |_| |_| .__/|_|\\___/ \\__, |\\___|\\___| |_|  |_|\\__,_|_| |_|\\__,_|\\__, |\\___|_|   
-                   |_|            |___/                                      |___/           
-   `;
+    let welcome_message = figlet.textSync("Employee Tracker");
+
     console.log(welcome_message);
     ask();
 }
