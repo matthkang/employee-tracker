@@ -38,6 +38,89 @@ const questions = [
     }
 ];
 
+const manager_names = [];
+const roles = [];
+const employees = [];
+
+async function getEmployees() {
+    const sql = `SELECT CONCAT(employee.first_name, ' ', employee.last_name) AS name FROM employee`;
+    const result = await db.query(sql);
+    for (let i = 0; i < result[0].length; i++) {
+        employees.push(result[0][i].name);
+    }
+}
+
+async function getManagers() {
+    const sql = `SELECT CONCAT(manager.first_name, ' ', manager.last_name) AS manager FROM employee LEFT JOIN employee AS manager ON employee.manager_id = manager.id WHERE employee.manager_id IS NOT NULL`;
+    const result = await db.query(sql);
+    for (let i = 0; i < result[0].length; i++) {
+        manager_names.push(result[0][i].manager);
+    }
+}
+
+async function getRoles() {
+    const sql = `SELECT title FROM role`;
+    const result = await db.query(sql);
+    for (let i = 0; i < result[0].length; i++) {
+        roles.push(result[0][i].title);
+    }
+}
+
+async function getDepartmentId(department) {
+    const sql = `SELECT id FROM department WHERE name = ?`;
+    const result = await db.query(sql, department);
+    return result[0][0].id;
+}
+
+async function getRoleId(title) {
+    const sql = `SELECT id FROM role WHERE title = ?`;
+    const result = await db.query(sql, title);
+    return result[0][0].id;
+}
+
+async function getManagerId(manager) {
+    const sql = `SELECT id FROM employee WHERE first_name = ? AND last_name = ?`;
+    const params = manager.split(' ');
+    const result = await db.query(sql, params);
+    return result[0][0].id;
+}
+
+const add_employee_questions = [
+    {
+        message: 'What is the employee\'s first name?', type: 'input', name: 'first_name'
+    },
+    {
+        message: 'What is the employee\'s last name?', type: 'input', name: 'last_name'
+    },
+    {
+        message: 'What is the employee\'s role?',
+        type: 'list',
+        choices: roles,
+        name: 'role'
+    },
+    {
+        message: 'Who is the employee\'s manager?',
+        type: 'list',
+        choices: manager_names,
+        name: 'manager'
+    }
+];
+
+const update_employee_questions = [
+    {
+        message: 'Who\'s role would you like to update?',
+        type: 'list',
+        choices: employees,
+        name: 'name'
+    },
+    {
+        message: 'Which role do you want to assign the selected employee?',
+        type: 'list',
+        choices: roles,
+        name: 'role'
+    }
+];
+
 const department_questions = [
     {
         message: 'What is the name of the department?', type: 'input', name: 'department'
@@ -59,6 +142,30 @@ const role_questions = [
     }
 ];
 
+async function addEmployee() {
+    await getManagers();
+    await getRoles();
+    inquirer.prompt(add_employee_questions).then(async (answers) => {
+        const sql = `INSERT INTO employee (first_name, last_name, role_id, manager_id) VALUES (?, ?, ?, ?)`;
+        const firstName = answers.first_name;
+        const lastName = answers.last_name;
+        const roleId = await getRoleId(answers.role);
+        const managerId = await getManagerId(answers.manager);
+
+        const params = [firstName, lastName, roleId, managerId];
+
+        db.query(sql, params, (err, result) => {
+            if (err) {
+                console.log(err);
+            }
+        })
+            .catch(console.log)
+            .then(() => {
+                ask();
+            })
+    })
+}
+
 function viewEmployees() {
     // manager id should return the first and last name of the manager
     const sql = `SELECT employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name, ' ', manager.last_name) AS manager FROM employee JOIN role ON employee.role_id = role.id JOIN department ON role.department_id = department.id LEFT JOIN employee AS manager ON employee.manager_id = manager.id`;
@@ -73,6 +180,30 @@ function viewEmployees() {
         });
 }
 
+async function updateEmployee() {
+    await getEmployees();
+    await getRoles();
+    inquirer.prompt(update_employee_questions).then(async (answers) => {
+        const sql = `UPDATE employee SET role_id = ? WHERE first_name = ? AND last_name = ?`;
+        const name = answers.name;
+        const firstName = name.split(' ')[0];
+        const lastName = name.split(' ')[1];
+        const roleId = await getRoleId(answers.role);
+
+        const params = [roleId, firstName, lastName];
+
+        db.query(sql, params, (err, result) => {
+            if (err) {
+                console.log(err);
+            }
+        })
+            .catch(console.log)
+            .then(() => {
+                ask();
+            })
+    })
+}
+
 function viewRoles() {
     const sql = `SELECT * FROM role`;
     db.query(sql)
@@ -84,12 +215,6 @@ function viewRoles() {
         .then(() => {
             ask();
         });
-}
-
-async function getDepartmentId(department) {
-    const sql = `SELECT id FROM department WHERE name = ?`;
-    const result = await db.query(sql, department);
-    return result[0][0].id;
 }
 
 function addRole() {
@@ -153,8 +278,10 @@ function ask() {
                 viewEmployees();
             }
             else if (answers.choice === 'Add Employee') {
+                addEmployee();
             }
             else if (answers.choice === 'Update Employee Role') {
+                updateEmployee();
             }
             else if (answers.choice === 'View All Roles') {
                 viewRoles();
