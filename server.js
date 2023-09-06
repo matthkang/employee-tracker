@@ -88,7 +88,7 @@ const questions = [
     {
         message: 'What would you like to do?',
         type: 'list',
-        choices: ['View All Employees', 'View Employees by Manager', 'Add Employee', 'Update Employee Role', 'Update Employee Manager', new inquirer.Separator(), 'View All Roles', 'Add Role', new inquirer.Separator(), 'View All Departments', 'Add Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
+        choices: ['View All Employees', 'View Employees by Manager', 'View Employees by Department', 'Add Employee', 'Update Employee Role', 'Update Employee Manager', new inquirer.Separator(), 'View All Roles', 'Add Role', new inquirer.Separator(), 'View All Departments', 'Add Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
         name: 'choice'
     }
 ];
@@ -153,6 +153,15 @@ const view_employee_manager_questions = [
         type: 'list',
         choices: managers,
         name: 'manager',
+        loop: false
+    },
+];
+const view_employee_department_questions = [
+    {
+        message: 'Which department\'s employees would you like to view?',
+        type: 'list',
+        choices: departments,
+        name: 'department',
         loop: false
     },
 ];
@@ -235,6 +244,23 @@ async function viewEmployeesByManager() {
             });
     })
     managers = [];
+}
+async function viewEmployeesByDepartment() {
+    await getDepartments();
+    inquirer.prompt(view_employee_department_questions).then(async (answers) => {
+        const sql = `SELECT employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name, ' ', manager.last_name) AS manager FROM employee JOIN role ON employee.role_id = role.id JOIN department ON role.department_id = department.id LEFT JOIN employee AS manager ON employee.manager_id = manager.id where department.name = ?`;
+        const department = answers.department;
+        db.query(sql, department)
+            .then(([rows, fields]) => {
+                console.log();
+                console.table(rows);
+            })
+            .catch(console.log)
+            .then(() => {
+                ask();
+            });
+    })
+    departments = [];
 }
 async function updateEmployee() {
     await getEmployees();
@@ -364,6 +390,9 @@ function ask() {
             }
             else if (answers.choice === 'View Employees by Manager') {
                 viewEmployeesByManager();
+            }
+            else if (answers.choice === 'View Employees by Department') {
+                viewEmployeesByDepartment();
             }
             else if (answers.choice === 'Add Employee') {
                 addEmployee();
