@@ -13,6 +13,7 @@ let departments = [];
 async function getEmployees() {
     const sql = `SELECT DISTINCT CONCAT(employee.first_name, ' ', employee.last_name) AS name FROM employee`;
     const result = await db.query(sql);
+    employees.length = 0;
     for (let i = 0; i < result[0].length; i++) {
         employees.push(result[0][i].name);
     }
@@ -20,6 +21,7 @@ async function getEmployees() {
 async function getManagers() {
     const sql = `SELECT DISTINCT CONCAT(manager.first_name, ' ', manager.last_name) AS manager FROM employee LEFT JOIN employee AS manager ON employee.manager_id = manager.id WHERE employee.manager_id IS NOT NULL`;
     const result = await db.query(sql);
+    managers.length = 0;
     for (let i = 0; i < result[0].length; i++) {
         managers.push(result[0][i].manager);
     }
@@ -27,6 +29,7 @@ async function getManagers() {
 async function getRoles() {
     const sql = `SELECT DISTINCT title FROM role`;
     const result = await db.query(sql);
+    roles.length = 0;
     for (let i = 0; i < result[0].length; i++) {
         roles.push(result[0][i].title);
     }
@@ -34,6 +37,7 @@ async function getRoles() {
 async function getDepartments() {
     const sql = `SELECT DISTINCT name FROM department`;
     const result = await db.query(sql);
+    departments.length = 0;
     for (let i = 0; i < result[0].length; i++) {
         departments.push(result[0][i].name);
     }
@@ -63,7 +67,7 @@ const questions = [
     {
         message: 'What would you like to do?',
         type: 'list',
-        choices: ['View All Employees', 'View Employees by Manager', 'View Employees by Department', 'Add Employee', 'Update Employee Role', 'Update Employee Manager', 'Delete Employee', new inquirer.Separator(), 'View All Roles', 'Add Role', new inquirer.Separator(), 'View All Departments', 'Add Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
+        choices: ['View All Employees', 'View Employees by Manager', 'View Employees by Department', 'Add Employee', 'Update Employee Role', 'Update Employee Manager', 'Delete Employee', new inquirer.Separator(), 'View All Roles', 'Add Role', new inquirer.Separator(), 'View All Departments', 'Add Department', 'Delete Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
         name: 'choice',
     }
 ];
@@ -156,6 +160,16 @@ const add_department_questions = [
         message: 'What is the name of the department?', type: 'input', name: 'department'
     }
 ];
+const delete_department_questions = [
+    {
+        message: 'Which department would you like to delete?',
+        type: 'list',
+        choices: departments,
+        name: 'department',
+        loop: false
+    },
+];
+
 // questions for adding new role
 const add_role_questions = [
     {
@@ -196,8 +210,6 @@ async function addEmployee() {
                 ask();
             })
     })
-    managers = [];
-    roles = [];
 }
 function viewEmployees() {
     // manager id should return the first and last name of the manager
@@ -227,7 +239,6 @@ async function viewEmployeesByManager() {
                 ask();
             });
     })
-    managers = [];
 }
 async function viewEmployeesByDepartment() {
     await getDepartments();
@@ -244,7 +255,6 @@ async function viewEmployeesByDepartment() {
                 ask();
             });
     })
-    departments = [];
 }
 async function updateEmployee() {
     await getEmployees();
@@ -268,8 +278,6 @@ async function updateEmployee() {
                 ask();
             })
     })
-    employees = [];
-    roles = [];
 }
 async function updateEmployeeManager() {
     await getEmployees();
@@ -293,8 +301,6 @@ async function updateEmployeeManager() {
                 ask();
             })
     })
-    employees = [];
-    managers = [];
 }
 async function deleteEmployee() {
     await getEmployees();
@@ -316,7 +322,53 @@ async function deleteEmployee() {
                 ask();
             })
     })
-    employees = [];
+}
+
+// department related functions
+function viewDepartments() {
+    const sql = `SELECT * FROM department`;
+    db.query(sql)
+        .then(([rows, fields]) => {
+            console.log();
+            console.table(rows);
+        })
+        .catch(console.log)
+        .then(() => {
+            ask();
+        });
+}
+function addDepartment() {
+    inquirer.prompt(add_department_questions).then((answers) => {
+        const sql = `INSERT INTO department (name) VALUES (?)`;
+        const departmentName = answers.department;
+
+        db.query(sql, departmentName, (err, result) => {
+            if (err) {
+                console.log(err);
+            }
+        })
+            .catch(console.log)
+            .then(() => {
+                ask();
+            })
+    })
+}
+async function deleteDepartment() {
+    await getDepartments();
+    inquirer.prompt(delete_department_questions).then((answers) => {
+        const sql = `DELETE FROM department WHERE name = ?`;
+        const department = answers.department;
+
+        db.query(sql, department, (err, result) => {
+            if (err) {
+                console.log(err);
+            }
+        })
+            .catch(console.log)
+            .then(() => {
+                ask();
+            })
+    })
 }
 
 // role related functions
@@ -346,37 +398,6 @@ async function addRole() {
         const params = [roleName, salary, departmentId];
         // insert statement to add new role
         db.query(sql, params, (err, result) => {
-            if (err) {
-                console.log(err);
-            }
-        })
-            .catch(console.log)
-            .then(() => {
-                ask();
-            })
-    })
-    departments = [];
-}
-
-// department related functions
-function viewDepartments() {
-    const sql = `SELECT * FROM department`;
-    db.query(sql)
-        .then(([rows, fields]) => {
-            console.log();
-            console.table(rows);
-        })
-        .catch(console.log)
-        .then(() => {
-            ask();
-        });
-}
-function addDepartment() {
-    inquirer.prompt(add_department_questions).then((answers) => {
-        const sql = `INSERT INTO department (name) VALUES (?)`;
-        const departmentName = answers.department;
-
-        db.query(sql, departmentName, (err, result) => {
             if (err) {
                 console.log(err);
             }
@@ -423,6 +444,9 @@ function ask() {
             }
             else if (answers.choice === 'Add Department') {
                 addDepartment();
+            }
+            else if (answers.choice === 'Delete Department') {
+                deleteDepartment();
             }
             else if (answers.choice === 'Quit') {
                 db.end();
