@@ -30,10 +30,10 @@ const db = mysql.createConnection(
 
 
 // Get employees, managers, roles, and departments
-const employees = [];
-const managers = [];
-const roles = [];
-const departments = [];
+let employees = [];
+let managers = [];
+let roles = [];
+let departments = [];
 
 async function getEmployees() {
     const sql = `SELECT DISTINCT CONCAT(employee.first_name, ' ', employee.last_name) AS name FROM employee`;
@@ -88,7 +88,7 @@ const questions = [
     {
         message: 'What would you like to do?',
         type: 'list',
-        choices: ['View All Employees', 'Add Employee', 'Update Employee Role', 'Update Employee Manager', new inquirer.Separator(), 'View All Roles', 'Add Role', new inquirer.Separator(), 'View All Departments', 'Add Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
+        choices: ['View All Employees', 'View Employees by Manager', 'Add Employee', 'Update Employee Role', 'Update Employee Manager', new inquirer.Separator(), 'View All Roles', 'Add Role', new inquirer.Separator(), 'View All Departments', 'Add Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
         name: 'choice'
     }
 ];
@@ -147,6 +147,15 @@ const update_employee_manager_questions = [
         loop: false
     }
 ];
+const view_employee_manager_questions = [
+    {
+        message: 'Which manager\'s employees would you like to view?',
+        type: 'list',
+        choices: managers,
+        name: 'manager',
+        loop: false
+    },
+];
 
 // questions for adding new department
 const add_department_questions = [
@@ -194,6 +203,8 @@ async function addEmployee() {
                 ask();
             })
     })
+    managers = [];
+    roles = [];
 }
 function viewEmployees() {
     // manager id should return the first and last name of the manager
@@ -207,6 +218,23 @@ function viewEmployees() {
         .then(() => {
             ask();
         });
+}
+async function viewEmployeesByManager() {
+    await getManagers();
+    inquirer.prompt(view_employee_manager_questions).then(async (answers) => {
+        const sql = `SELECT employee.first_name, employee.last_name, role.title, department.name AS department, role.salary, CONCAT(manager.first_name, ' ', manager.last_name) AS manager FROM employee JOIN role ON employee.role_id = role.id JOIN department ON role.department_id = department.id LEFT JOIN employee AS manager ON employee.manager_id = manager.id where CONCAT(manager.first_name, ' ', manager.last_name) = ?`;
+        const manager = answers.manager;
+        db.query(sql, manager)
+            .then(([rows, fields]) => {
+                console.log();
+                console.table(rows);
+            })
+            .catch(console.log)
+            .then(() => {
+                ask();
+            });
+    })
+    managers = [];
 }
 async function updateEmployee() {
     await getEmployees();
@@ -230,6 +258,8 @@ async function updateEmployee() {
                 ask();
             })
     })
+    employees = [];
+    roles = [];
 }
 async function updateEmployeeManager() {
     await getEmployees();
@@ -253,6 +283,8 @@ async function updateEmployeeManager() {
                 ask();
             })
     })
+    employees = [];
+    managers = [];
 }
 
 // role related functions
@@ -291,6 +323,7 @@ async function addRole() {
                 ask();
             })
     })
+    departments = [];
 }
 
 // department related functions
@@ -329,6 +362,9 @@ function ask() {
             if (answers.choice === 'View All Employees') {
                 viewEmployees();
             }
+            else if (answers.choice === 'View Employees by Manager') {
+                viewEmployeesByManager();
+            }
             else if (answers.choice === 'Add Employee') {
                 addEmployee();
             }
@@ -353,7 +389,6 @@ function ask() {
             else if (answers.choice === 'Quit') {
                 db.end();
             }
-
         })
 }
 
