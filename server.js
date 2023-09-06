@@ -67,7 +67,7 @@ const questions = [
     {
         message: 'What would you like to do?',
         type: 'list',
-        choices: ['View All Employees', 'View Employees by Manager', 'View Employees by Department', 'Add Employee', 'Update Employee Role', 'Update Employee Manager', 'Delete Employee', new inquirer.Separator(), 'View All Roles', 'Add Role', new inquirer.Separator(), 'View All Departments', 'Add Department', 'Delete Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
+        choices: ['View All Employees', 'View Employees by Manager', 'View Employees by Department', 'Add Employee', 'Update Employee Role', 'Update Employee Manager', 'Delete Employee', new inquirer.Separator(), 'View All Roles', 'Add Role', 'Delete Role', new inquirer.Separator(), 'View All Departments', 'Add Department', 'Delete Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
         name: 'choice',
     }
 ];
@@ -185,6 +185,15 @@ const add_role_questions = [
         name: 'department',
         loop: false
     }
+];
+const delete_role_questions = [
+    {
+        message: 'Which role would you like to delete?',
+        type: 'list',
+        choices: roles,
+        name: 'role',
+        loop: false
+    },
 ];
 
 // employee related functions
@@ -408,6 +417,23 @@ async function addRole() {
             })
     })
 }
+async function deleteRole() {
+    await getRoles();
+    inquirer.prompt(delete_role_questions).then((answers) => {
+        const sql = `DELETE FROM role WHERE title = ?`;
+        const title = answers.role;
+
+        db.query(sql, title, (err, result) => {
+            if (err) {
+                console.log(err);
+            }
+        })
+            .catch(console.log)
+            .then(() => {
+                ask();
+            })
+    })
+}
 
 function ask() {
     inquirer.prompt(questions)
@@ -438,6 +464,9 @@ function ask() {
             }
             else if (answers.choice === 'Add Role') {
                 addRole();
+            }
+            else if (answers.choice === 'Delete Role') {
+                deleteRole();
             }
             else if (answers.choice === 'View All Departments') {
                 viewDepartments();
