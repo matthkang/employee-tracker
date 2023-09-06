@@ -1,33 +1,8 @@
 // packages needed for application
 const inquirer = require('inquirer')
-// Import and require mysql2
-const mysql = require('mysql2');
-
 var figlet = require('figlet');
 
-const express = require('express');
-
-// import and configure dotenv
-require('dotenv').config();
-
-const PORT = process.env.PORT || 3001;
-const app = express();
-
-// Express middleware
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-
-
-// Connect to database
-const db = mysql.createConnection(
-    {
-        host: 'localhost',
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_NAME
-    }
-).promise();
-
+const db = require('./config/connection');
 
 // Get employees, managers, roles, and departments
 let employees = [];
@@ -88,11 +63,11 @@ const questions = [
     {
         message: 'What would you like to do?',
         type: 'list',
-        choices: ['View All Employees', 'View Employees by Manager', 'View Employees by Department', 'Add Employee', 'Update Employee Role', 'Update Employee Manager', new inquirer.Separator(), 'View All Roles', 'Add Role', new inquirer.Separator(), 'View All Departments', 'Add Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
-        name: 'choice'
+        choices: ['View All Employees', 'View Employees by Manager', 'View Employees by Department', 'Add Employee', 'Update Employee Role', 'Update Employee Manager', 'Delete Employee', new inquirer.Separator(), 'View All Roles', 'Add Role', new inquirer.Separator(), 'View All Departments', 'Add Department', new inquirer.Separator(), 'Quit', new inquirer.Separator()],
+        name: 'choice',
     }
 ];
-// questions for adding/updating employee
+// questions for employee
 const add_employee_questions = [
     {
         message: 'What is the employee\'s first name?', type: 'input', name: 'first_name'
@@ -162,6 +137,15 @@ const view_employee_department_questions = [
         type: 'list',
         choices: departments,
         name: 'department',
+        loop: false
+    },
+];
+const delete_employee_questions = [
+    {
+        message: 'Which employee would you like to delete?',
+        type: 'list',
+        choices: employees,
+        name: 'name',
         loop: false
     },
 ];
@@ -312,6 +296,28 @@ async function updateEmployeeManager() {
     employees = [];
     managers = [];
 }
+async function deleteEmployee() {
+    await getEmployees();
+    inquirer.prompt(delete_employee_questions).then(async (answers) => {
+        const sql = `DELETE FROM employee WHERE first_name = ? AND last_name = ?`;
+        const name = answers.name;
+        const firstName = name.split(' ')[0];
+        const lastName = name.split(' ')[1];
+
+        const params = [firstName, lastName];
+
+        db.query(sql, params, (err, result) => {
+            if (err) {
+                console.log(err);
+            }
+        })
+            .catch(console.log)
+            .then(() => {
+                ask();
+            })
+    })
+    employees = [];
+}
 
 // role related functions
 function viewRoles() {
@@ -402,6 +408,9 @@ function ask() {
             }
             else if (answers.choice === 'Update Employee Manager') {
                 updateEmployeeManager();
+            }
+            else if (answers.choice === 'Delete Employee') {
+                deleteEmployee();
             }
             else if (answers.choice === 'View All Roles') {
                 viewRoles();
