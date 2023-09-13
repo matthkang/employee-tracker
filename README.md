@@ -3,7 +3,7 @@
 ## Description
 
 Create an application to easily view and interact with company information stored in a mySQL database.
-This application uses Node.js, 
+This application uses Node.js, Express.js. and MySQL.
 
 ## Table of Contents
 
@@ -13,6 +13,13 @@ This application uses Node.js,
 - [Questions](#questions)
 
 ## Installation
+
+Create a local .env file, filling in the appropriate database username and password:  
+```
+DB_NAME='company_db'  
+DB_USER=''  
+DB_PASSWORD=''
+```
 
 To install dependencies:
 ```npm i```
